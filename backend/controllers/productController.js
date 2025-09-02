@@ -2,7 +2,7 @@ import Product from "../models/Product.js";
 
 export const createProduct = async (req, res) => {
   try {
-    const { barcode, title, description, category, price, stock, unit, expiryDate } = req.body;
+    const { barcode, title, description, price, stock } = req.body;
     if (!title || !price || stock === undefined || stock === null) {
       return res.status(400).json({ message: "Title, price, and stock are required fields." });
     }
@@ -11,11 +11,8 @@ export const createProduct = async (req, res) => {
       barcode,
       title,
       description,
-      category,
       price,
-      stock,
-      unit,
-      expiryDate,
+      stock
     });
 
     const savedProduct = await newProduct.save();
@@ -83,11 +80,11 @@ export const increaseStockByBarcodeViaParams = async (req, res) => {
 export const decreaseStockByBarcodeViaParams = async (req, res) => {
   try {
     const { barcode } = req.params;
-    const {stock} = req.body;
+    let {stock} = req.body;
 
-    if(!stock) stock=-1;
+    if(!stock || stock==undefined || stock==null) stock=-1;
     else stock*=-1;
-    
+
     const product = await Product.findOne({barcode});
 
     if(product){

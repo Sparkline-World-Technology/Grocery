@@ -16,11 +16,6 @@ const productSchema = new mongoose.Schema({
     required: false,
     trim: true
   },
-  category: {
-    type: String,
-    required: false,
-    trim: true
-  },
   price: {
     type: Number,
     required: true,
@@ -30,14 +25,6 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: true,
     min: 0
-  },
-  unit: {
-    type: String, // e.g., "kg", "litre", "piece"
-    required: false
-  },
-  expiryDate: {
-    type: Date,
-    required: false
   },
   createdAt: {
     type: Date,

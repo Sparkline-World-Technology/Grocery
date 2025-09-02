@@ -1,12 +1,10 @@
-import Invoice from "../models/Invoice";
-import Product from "../models/Product";
-import fs from "fs";
+import Invoice from "../models/Invoice.js";
+import Product from "../models/Product.js";
 import PDFDocument from "pdfkit";
 
 export const createInvoice = async (req, res) => {
   try {
-// barcode given then make product struct -> [{productId, quantity, price}]
-// not given barcode product id given -> [{productId, quantity, price}]
+
 // req.body = {ids: [{productId, quantity}], customerName, due}
 
     const {ids, customerName, paid, storeName} = req.body;
@@ -22,27 +20,33 @@ export const createInvoice = async (req, res) => {
     }
     
     let totalAmount=0;
-    let items=[];
-    ids.forEach(async (item)=>{
-      const product = await Product.findById(item.productId);
-      if(!product){
-        return res.status(404).json({message: `Product with id ${item.productId} not found`});
-      }
-        if(item.quantity>product.stock){
-            return res.status(400).json({message: `Insufficient stock for product ${product.title}`});
-        }
-        const price = product.price * item.quantity;
-        totalAmount += price;
-        items.push({
-            productId: item.productId,
+
+    const items = await Promise.all(
+        ids.map(async (item) => {
+            let product;
+            if (item.barcode) {
+            product = await Product.findOne({ barcode: item.barcode });
+            } else {
+            product = await Product.findById(item.productId);
+            }
+
+            if (!product) throw new Error(`Product not found`);
+
+            if (item.quantity > product.stock) throw new Error(`Insufficient stock for ${product.title}`);
+
+            const price = product.price * item.quantity;
+            totalAmount += price;
+
+            product.stock -= item.quantity;
+            await product.save();
+
+            return {
+            productId: product._id,
             name: product.title,
             quantity: item.quantity,
-            price: product.price
-        });
-        // Deduct stock
-        product.stock -= item.quantity;
-        await product.save();
-    }
+            price: product.price,
+            };
+        })
     );
     const invoiceNumber = `INV-${Date.now()}`;
     const newInvoice = new Invoice({
@@ -55,8 +59,11 @@ export const createInvoice = async (req, res) => {
     await newInvoice.save();
 
     const doc = new PDFDocument();
-    const filePath = `invoices/${invoiceNumber}.pdf`;
-    doc.pipe(fs.createWriteStream(filePath));
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=${invoiceNumber}.pdf`);
+
+    doc.pipe(res);
+
 
   // Header
   doc.fontSize(20).text("Invoice", { align: "center" });
@@ -67,7 +74,7 @@ export const createInvoice = async (req, res) => {
   doc.moveDown();
   
   // Customer
-  doc.text(`Customer: ${customer.name}`);
+  doc.text(`Customer: ${customerName}`);
   doc.moveDown();
 
     // Table Header
@@ -79,6 +86,7 @@ export const createInvoice = async (req, res) => {
 
     items.forEach((item) => {
         const line = `${item.name} - ${item.quantity}  ${item.price}`;
+        // console.log(line);
         doc.text(line);
     });
     doc.moveDown();
@@ -95,7 +103,7 @@ export const createInvoice = async (req, res) => {
     }
     else{
         totalAmount -= paid;
-        balance = totalAmount - paid;
+        balance = 0;
     }
     doc.text(`Balance: ${balance}`);
     doc.moveDown();
@@ -105,7 +113,7 @@ export const createInvoice = async (req, res) => {
     
     doc.end();
 
-    res.status(201).json({message: "Invoice created successfully", file: filePath});
+    // res.status(201).json({message: "Invoice created successfully" });
 
   } catch (error) { 
     console.error(error);
