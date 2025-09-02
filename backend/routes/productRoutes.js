@@ -3,7 +3,8 @@ import {
   createProduct, 
   getProducts, 
   updateProduct, 
-  increaseStockByBarcodeViaParams 
+  increaseStockByBarcodeViaParams,
+  decreaseStockByBarcodeViaParams
 } from "../controllers/productController.js";
 
 const router = express.Router();
@@ -11,6 +12,7 @@ const router = express.Router();
 router.post("/create", createProduct);
 router.get("/getAllProducts", getProducts);
 router.put("/:id", updateProduct);
-router.patch("/barcode/:barcode", increaseStockByBarcodeViaParams);
+router.patch("/stockin/barcode/:barcode", increaseStockByBarcodeViaParams);
+router.patch("/stockout/barcode/:barcode", decreaseStockByBarcodeViaParams);
 
 export default router;
